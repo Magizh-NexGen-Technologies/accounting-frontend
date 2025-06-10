@@ -18,8 +18,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface FinanceSettings {
-  id: number;
-  invoice_prefix: string;
+  id: number; 
+  invoice_prefix: string;  
   financial_year_start_date: string;
   financial_year_end_date: string;
   gst_percentage: number;

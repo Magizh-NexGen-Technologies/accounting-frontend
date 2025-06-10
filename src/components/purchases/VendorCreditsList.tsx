@@ -15,7 +15,7 @@ const VendorCreditsList = () => {
   const { toast } = useToast();
   
   // Enhanced status colors with better visual distinction
-  const statusColors = {
+  const statusColors = { 
     'draft': { bg: 'bg-slate-100', text: 'text-slate-800' },
     'pending': { bg: 'bg-yellow-100', text: 'text-yellow-800' },
     'approved': { bg: 'bg-blue-100', text: 'text-blue-800' },

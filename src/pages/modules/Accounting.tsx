@@ -6,7 +6,9 @@ import { Separator } from '@/components/ui/separator';
 import ChartOfAccounts from '@/components/accounting/ChartOfAccounts';
 import JournalEntries from '@/components/accounting/JournalEntries';
 import Banks from '@/components/accounting/Banks';
-import { BookOpen, FileText, BarChart3, PieChart } from 'lucide-react';
+import { BookOpen, FileText, BarChart3, PieChart, Landmark   } from 'lucide-react';
+
+
 
 const Accounting: React.FC = () => {
   const [activeTab, setActiveTab] = useState('general-ledger');
@@ -41,7 +43,7 @@ const Accounting: React.FC = () => {
             </TabsTrigger>
 
             <TabsTrigger value="bank" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
+              <Landmark className="h-4 w-4" />
               <span className="hidden sm:inline">Bank</span>
               <span className="sm:hidden">Banks</span>
             </TabsTrigger>
@@ -54,7 +56,7 @@ const Accounting: React.FC = () => {
         
         <TabsContent value="journal" className="mt-6">
           <JournalEntries 
-            transactions={mockTransactions}
+            transactions={mockTransactions} 
             accounts={mockAccounts} 
           />
         </TabsContent>

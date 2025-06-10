@@ -38,7 +38,7 @@ import DebitNotesList from '@/components/purchases/DebitNotesList';
 // Tab interface for structured tab data
 interface PurchasesTab {
   id: string;
-  label: string;
+  label: string; 
   icon: React.ReactNode;
 }
 

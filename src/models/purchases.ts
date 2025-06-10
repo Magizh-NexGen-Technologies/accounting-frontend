@@ -1,19 +1,30 @@
-
 // Define interfaces for purchase module entities
 
 // Vendor entity type
 export interface Vendor {
-  id: string;
-  name: string;
+  id: number;
+  vendorId: string;
+  firstName: string;
+  lastName: string;
+  companyName: string;
+  displayName: string;
   email: string;
-  phone: string;
-  address: string;
-  taxId: string;
-  paymentTerms: number;
-  creditLimit: number;
-  status: 'active' | 'inactive' | 'blocked';
+  category: string;
+  workPhone: string;
+  mobile: string;
+  doorNo: string;
+  city: string;
+  state: string;
+  district: string;
+  country: string;
+  bankDetails: {
+    accountHolderName: string;
+    bankName: string;
+    accountNumber: string;
+    ifsc: string;
+  };
+  status: 'active' | 'inactive';
   created: string;
-  lastTransaction?: string;
   balance: number;
 }
 

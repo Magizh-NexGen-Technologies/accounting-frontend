@@ -54,7 +54,7 @@ const navigationItems = [
   // { name: "GST E-Filing", path: "/gst-efiling", icon: File },
   // { name: "Tax", path: "/tax", icon: Percent },
   { name: "Reports", path: "/reports", icon: ChartBar },
-  // { name: "User Management", path: "/users", icon: User },
+  { name: "User Management", path: "/users", icon: User },
   { name: "Settings", path: "/settings", icon: Settings },
 ];
 

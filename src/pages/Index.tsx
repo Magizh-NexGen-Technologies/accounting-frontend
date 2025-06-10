@@ -8,6 +8,8 @@ import Unauthorized from '@/pages/Unauthorized';
 import { superadminRoutes } from '@/routes/superadmin';
 import { organizationRoutes } from '@/routes/organization';
 import OrganizationWrapper from '@/components/OrganizationWrapper';
+import { ForgotPassword } from './forgot_password/ForgotPassword';
+import ResetPassword from './forgot_password/ResetPassword';
 
 const Index = () => {
   const { isAuthenticated, user } = useAuth();
@@ -17,6 +19,9 @@ const Index = () => {
       {/* Auth Routes */}
       <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} />
       <Route path="/register" element={!isAuthenticated ? <Registration /> : <Navigate to="/login" replace />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+
       <Route path="/unauthorized" element={<Unauthorized />} />
       
       {/* Super Admin Routes */}
