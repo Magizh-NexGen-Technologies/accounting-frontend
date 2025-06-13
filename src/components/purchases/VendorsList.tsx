@@ -11,25 +11,15 @@ import {
   Card, 
   CardContent, 
   CardDescription, 
-  CardHeader, 
+  CardHeader,  
   CardTitle 
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Search } from 'lucide-react';
-import { Vendor } from '@/models/purchases';
+
+import { Plus, Pencil, Trash2, Search, FileText, CheckCircle, Circle, Eye } from 'lucide-react';
 import VendorForm from './VendorForm'; 
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -47,55 +37,136 @@ interface ApiVendor {
   category: string;
   work_phone: string;
   mobile: string;
-  door_no: string;
+  gstin: string;
+  opening_balance: string;
+  billing_address: {
+    city: string;
+    state: string;
+    doorNo: string;
+    country: string;
+    pincode: string;
+    district: string;
+  };
+  shipping_address: {
+    city: string;
+    state: string;
+    doorNo: string;
+    country: string;
+    pincode: string;
+    district: string;
+  };
+  same_as_billing: boolean;
+  bank_details: {
+    accountHolderName: string;
+    bankName: string;
+    accountNumber: string;
+    ifsc: string;
+  };
+  status: 'active' | 'inactive';
+  balance: number;
+  payment_terms: string;
+  created_at: string;
+  updated_at: string;
+  business_type: string;
+  tds_applicable: boolean;
+  doorNo: string;
   city: string;
   state: string;
   district: string;
   country: string;
-  bank_details: {
-    account_holder_name?: string;
-    bank_name?: string;
-    account_number?: string;
-    ifsc?: string;
+  pincode: string;
+}
+
+// Add the interface directly in the file
+interface Vendor {
+  id: number;
+  vendorId: string;
+  firstName: string;
+  lastName: string;
+  companyName: string;
+  displayName: string;
+  email: string;
+  category: string;
+  workPhone: string;
+  mobile: string;
+  doorNo: string;
+  city: string;
+  state: string;
+  district: string;
+  country: string;
+  pincode: string;
+  bankDetails: {
+    accountHolderName: string;
+    bankName: string;
+    accountNumber: string;
+    confirmAccountNumber: string;
+    ifsc: string;
   };
   status: 'active' | 'inactive';
-  created_at: string;
-  updated_at: string;
-  balance: number | string;
+  created: string;
+  balance: number;
+  gstin: string;
+  openingBalance: number;
+  billingAddress: {
+    doorNo: string;
+    city: string;
+    state: string;
+    district: string;
+    country: string;
+    pincode: string;
+  };
+  shippingAddress: {
+    doorNo: string;
+    city: string;
+    state: string;
+    district: string;
+    country: string;
+    pincode: string;
+  };
+  sameAsBilling: boolean;
+  paymentTerms: string;
+  businessType: string;
+  tdsApplicable: boolean;
 }
 
 const ALL_COLUMNS = [
   { key: 'vendor_id', label: 'Vendor ID' },
-  { key: 'first_name', label: 'First Name' },
-  { key: 'last_name', label: 'Last Name' },
-  { key: 'company_name', label: 'Company' },
+  { key: 'vendor_name', label: 'Vendor Name' },
   { key: 'display_name', label: 'Display Name' },
+  { key: 'company_name', label: 'Company' },
   { key: 'email', label: 'Email' },
-  { key: 'category', label: 'Category' },
-  { key: 'work_phone', label: 'Work Phone' },
   { key: 'mobile', label: 'Mobile' },
-  { key: 'door_no', label: 'Door No' },
-  { key: 'city', label: 'City' },
-  { key: 'state', label: 'State' },
-  { key: 'district', label: 'District' },
-  { key: 'country', label: 'Country' },
+  { key: 'work_phone', label: 'Work Phone' },
+  { key: 'category', label: 'Category' },
+  { key: 'gstin', label: 'GSTIN' },
+  { key: 'opening_balance', label: 'Opening Balance' },
+  { key: 'billing_address', label: 'Billing Address' },
+  { key: 'shipping_address', label: 'Shipping Address' },
   { key: 'bank_details', label: 'Bank Details' },
   { key: 'status', label: 'Status' },
   { key: 'balance', label: 'Balance' },
+  { key: 'payment_terms', label: 'Payment Terms' },
+  { key: 'business_type', label: 'Business Type' },
+  { key: 'tds_applicable', label: 'TDS Applicable' },
   { key: 'created_at', label: 'Created At' },
-  { key: 'updated_at', label: 'Updated At' },
+  { key: 'updated_at', label: 'Updated At' },   
 ];
 
 // Initial 8 columns to show
 const INITIAL_VISIBLE = [
+  
   'vendor_id',
-  'display_name',
+ 
   'company_name',
-  'email',
+  'display_name',
+  
   'mobile',
   'category',
+  
+  'business_type',
+  'tds_applicable',
   'balance',
-  'status',
+  'status'
 ];
 
 const VendorsList = () => {
@@ -107,10 +178,10 @@ const VendorsList = () => {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [currentVendor, setCurrentVendor] = useState<Vendor | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [vendorToDelete, setVendorToDelete] = useState<ApiVendor | null>(null);
+
   const [showColumnsDropdown, setShowColumnsDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -142,7 +213,14 @@ const VendorsList = () => {
       if (response.data?.data && Array.isArray(response.data.data)) {
         const processedVendors = response.data.data.map((vendor: ApiVendor) => ({
           ...vendor,
-          balance: typeof vendor.balance === 'string' ? parseFloat(vendor.balance) : (vendor.balance || 0)
+          bank_details: {
+            accountHolderName: vendor.bank_details?.accountHolderName || '',
+            bankName: vendor.bank_details?.bankName || '',
+            accountNumber: vendor.bank_details?.accountNumber || '',
+            ifsc: vendor.bank_details?.ifsc || '',
+          },
+          balance: typeof vendor.balance === 'string' ? parseFloat(vendor.balance) : (vendor.balance || 0),
+          vendor_name: `${vendor.first_name} ${vendor.last_name}`,
         }));
         setVendors(processedVendors);
       } else {
@@ -163,11 +241,16 @@ const VendorsList = () => {
     const search = searchQuery.toLowerCase();
     return visibleColumns.some((col) => {
       if (col === 'bank_details') {
-        const bank = vendor.bank_details || {};
+        const bank = vendor.bank_details || {
+          accountHolderName: '',
+          bankName: '',
+          accountNumber: '',
+          ifsc: ''
+        };
         return (
-          bank.account_holder_name?.toLowerCase().includes(search) ||
-          bank.bank_name?.toLowerCase().includes(search) ||
-          bank.account_number?.toLowerCase().includes(search) ||
+          bank.accountHolderName?.toLowerCase().includes(search) ||
+          bank.bankName?.toLowerCase().includes(search) ||
+          bank.accountNumber?.toLowerCase().includes(search) ||
           bank.ifsc?.toLowerCase().includes(search)
         );
       }
@@ -190,25 +273,9 @@ const VendorsList = () => {
     await fetchVendors();
   };
 
-  // Handle delete vendor
-  const handleDeleteVendor = async () => {
-    if (vendorToDelete) {
-      try {
-        await axios.delete(
-          `${API_URL}/api/dashboard/${organizationId}/purchases/vendors/${vendorToDelete.id}`
-        );
-        toast.success('Vendor deleted successfully');
-        await fetchVendors();
-      } catch (error) {
-        toast.error('Failed to delete vendor');
-      }
-      setDeleteDialogOpen(false);
-      setVendorToDelete(null);
-    }
-  };
+  
 
   const handleEditClick = (vendor: ApiVendor) => {
-    // Map snake_case to camelCase for VendorForm
     const mappedVendor: Vendor = {
       id: vendor.id,
       vendorId: vendor.vendor_id,
@@ -220,32 +287,80 @@ const VendorsList = () => {
       category: vendor.category,
       workPhone: vendor.work_phone,
       mobile: vendor.mobile,
-      doorNo: vendor.door_no,
-      city: vendor.city,
-      state: vendor.state,
-      district: vendor.district,
-      country: vendor.country,
+      gstin: vendor.gstin,
+      openingBalance: parseFloat(vendor.opening_balance),
+      billingAddress: vendor.billing_address,
+      shippingAddress: vendor.shipping_address,
+      sameAsBilling: vendor.same_as_billing,
       bankDetails: {
-        accountHolderName: vendor.bank_details?.account_holder_name || '',
-        bankName: vendor.bank_details?.bank_name || '',
-        accountNumber: vendor.bank_details?.account_number || '',
-        ifsc: vendor.bank_details?.ifsc || '',
+        accountHolderName: vendor.bank_details?.accountHolderName || '',
+        bankName: vendor.bank_details?.bankName || '',
+        accountNumber: vendor.bank_details?.accountNumber || '',
+        confirmAccountNumber: vendor.bank_details?.accountNumber || '',
+        ifsc: vendor.bank_details?.ifsc || ''
       },
       status: vendor.status,
       created: vendor.created_at,
-      balance: typeof vendor.balance === 'string' ? parseFloat(vendor.balance) : (vendor.balance || 0),
+      balance: vendor.balance,
+      paymentTerms: vendor.payment_terms,
+      businessType: vendor.business_type || 'regular',
+      tdsApplicable: vendor.tds_applicable || false,
+      doorNo: vendor.doorNo || '',
+      city: vendor.city || '',
+      state: vendor.state || '',
+      district: vendor.district || '',
+      country: vendor.country || '',
+      pincode: vendor.pincode || ''
     };
     setCurrentVendor(mappedVendor);
     setIsEditFormOpen(true);
   };
 
+  function mapApiVendorToRequestBody(vendor: ApiVendor, status: 'active' | 'inactive') {
+    return {
+      firstName: vendor.first_name,
+      lastName: vendor.last_name,
+      companyName: vendor.company_name,
+      displayName: vendor.display_name,
+      email: vendor.email,
+      category: vendor.category,
+      workPhone: vendor.work_phone,
+      mobile: vendor.mobile,
+      gstin: vendor.gstin,
+      openingBalance: vendor.opening_balance,
+      billingAddress: vendor.billing_address,
+      shippingAddress: vendor.shipping_address,
+      sameAsBilling: vendor.same_as_billing,
+      bankDetails: vendor.bank_details,
+      status: status,
+      paymentTerms: vendor.payment_terms,
+      businessType: vendor.business_type,
+      tdsApplicable: vendor.tds_applicable,
+    };
+  }
+
+  const handleToggleStatus = async (vendor: ApiVendor) => {
+    try {
+      const newStatus = vendor.status === 'active' ? 'inactive' : 'active';
+      const requestBody = mapApiVendorToRequestBody(vendor, newStatus);
+      await axios.put(
+        `${API_URL}/api/dashboard/${organizationId}/purchases/vendors/${vendor.id}`,
+        requestBody
+      );
+      toast.success(`Vendor marked as ${newStatus}`);
+      await fetchVendors();
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row justify-between sm:items-center space-y-2 sm:space-y-0">
+      <Card className="border-t-4 border-t-primary shadow-sm">
+        <CardHeader className="flex flex-col sm:flex-row justify-between sm:items-center space-y-2 sm:space-y-0 pb-4">
           <div>
-            <CardTitle>Vendors</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-xl font-bold">Vendors</CardTitle>
+            <CardDescription className="text-sm">
               Manage your vendor list and their information
             </CardDescription>
           </div>
@@ -276,103 +391,143 @@ const VendorsList = () => {
                 </div>
               )}
             </div>
-            <Button onClick={() => setIsAddFormOpen(true)}>
+            <Button onClick={() => setIsAddFormOpen(true)} className="bg-primary hover:bg-primary/90 transition-colors">
               <Plus className="mr-2 h-4 w-4" /> Add Vendor
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4 mb-4">
+          <div className="mb-4 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search vendors by ID, name, company, email, phone, category..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-xs"
+              className="pl-9 max-w-sm transition-all focus-within:max-w-md"
             />
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {ALL_COLUMNS.filter((col) => visibleColumns.includes(col.key)).map((col) => (
-                    <th key={col.key} className="px-4 py-2 text-center">{col.label}</th>
-                  ))}
-                  <th className="px-4 py-2 text-center">Actions</th>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center">
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                      </div>
-                    </TableCell>
+          <div className="rounded-md border overflow-hidden">
+            <div className="relative overflow-x-auto">
+              <Table >
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    {ALL_COLUMNS.filter((col) => visibleColumns.includes(col.key)).map((col) => (
+                      <th key={col.key} className="px-4 py-2 text-center font-medium text-muted-foreground">{col.label}</th>
+                    ))}
+                    <th className="px-4 py-3 text-center">Actions</th>
                   </TableRow>
-                ) : filteredVendors.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={visibleColumns.length + 1} className="h-24 text-center text-muted-foreground">
-                      No vendors found. Try adjusting your search.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredVendors.map((vendor) => (
-                    <TableRow key={vendor.id}>
-                      {ALL_COLUMNS.filter((col) => visibleColumns.includes(col.key)).map((col) => (
-                        <TableCell key={col.key} className="text-center">
-                          {col.key === 'balance'
-                            ? `₹${Number(vendor.balance || 0).toFixed(2)}`
-                            : col.key === 'created_at' || col.key === 'updated_at'
-                            ? new Date(vendor[col.key]).toLocaleDateString()
-                            : col.key === 'bank_details'
-                            ? (
-                              <div className="text-xs text-left">
-                                <div><b>Holder:</b> {vendor.bank_details?.account_holder_name || ''}</div>
-                                <div><b>Bank:</b> {vendor.bank_details?.bank_name || ''}</div>
-                                <div><b>Acc#:</b> {vendor.bank_details?.account_number || ''}</div>
-                                <div><b>IFSC:</b> {vendor.bank_details?.ifsc || ''}</div>
-                              </div>
-                            )
-                            : col.key === 'status'
-                            ? (
-                              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold
-                                ${vendor.status === 'active'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-200 text-gray-800'}
-                              `}>
-                                {vendor.status}
-                              </span>
-                            )
-                            : vendor[col.key]}
-                        </TableCell>
-                      ))}
-                      <TableCell className="text-center">
-                        <div className="flex justify-center space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleEditClick(vendor)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => {
-                              setVendorToDelete(vendor);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={visibleColumns.length + 1} className="h-32 text-center py-8 text-muted-foreground">
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <div className="text-muted-foreground/60 border border-dashed border-muted-foreground/20 rounded-full p-6"></div>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : filteredVendors.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={visibleColumns.length + 1} className="h-32 text-center py-8 text-muted-foreground">
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <div className="text-muted-foreground/60 border border-dashed border-muted-foreground/20 rounded-full p-6">
+                            <FileText className="h-8 w-8"/>
+                          </div>
+                          <div className="text-sm font-medium">No vendors found. Try adjusting your search.</div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredVendors.map((vendor) => (
+                      <TableRow key={vendor.id} className="hover:bg-muted/30 transition-colors">
+                        {ALL_COLUMNS.filter((col) => visibleColumns.includes(col.key)).map((col) => (
+                          <TableCell key={col.key} className="text-center">
+                            {col.key === 'vendor_name'
+                              ? `${vendor.first_name} ${vendor.last_name}`
+                              : col.key === 'balance' || col.key === 'opening_balance'
+                              ? `₹${Number(vendor[col.key] || 0).toFixed(2)}`
+                              : col.key === 'created_at' || col.key === 'updated_at'
+                              ? new Date(vendor[col.key]).toLocaleDateString()
+                              : col.key === 'bank_details'
+                              ? (
+                                <div className="text-xs text-left">
+                                  <div><b>Holder:</b> {vendor.bank_details?.accountHolderName || ''}</div>
+                                  <div><b>Bank:</b> {vendor.bank_details?.bankName || ''}</div>
+                                  <div><b>Acc#:</b> {vendor.bank_details?.accountNumber || ''}</div>
+                                  <div><b>IFSC:</b> {vendor.bank_details?.ifsc || ''}</div>
+                                </div>
+                              )
+                              : col.key === 'billing_address' || col.key === 'shipping_address'
+                              ? (
+                                <div className="text-xs text-left">
+                                  <div>{vendor[col.key]?.doorNo || ''}</div>
+                                  <div>{vendor[col.key]?.city || ''}, {vendor[col.key]?.district || ''}</div>
+                                  <div>{vendor[col.key]?.state || ''}, {vendor[col.key]?.country || ''}</div>
+                                  <div>{vendor[col.key]?.pincode || ''}</div>
+                                </div>
+                              )
+                              : col.key === 'status'
+                              ? (
+                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold
+                                  ${vendor.status === 'active'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-gray-200 text-gray-800'}
+                                `}>
+                                  {vendor.status}
+                                </span>
+                              )
+                              : col.key === 'tds_applicable'
+                              ? vendor.tds_applicable ? 'Yes' : 'No'
+                              : col.key === 'business_type'
+                              ? vendor.business_type.charAt(0).toUpperCase() + vendor.business_type.slice(1)
+                              : vendor[col.key]}
+                          </TableCell>
+                        ))}
+                        <TableCell className="text-center">
+                          <div className="flex justify-center space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              title="View Details"
+                              onClick={() => navigate(`/${organizationId}/purchases/vendors/${vendor.vendor_id}/vendor-details`)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              title={vendor.status === 'active' ? 'Mark as inactive' : 'Mark as active'}
+                              onClick={() => handleToggleStatus(vendor)}
+                            >
+                              {vendor.status === 'active' ? (
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              ) : (
+                                <Circle className="h-5 w-5 text-gray-400" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditClick(vendor)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          <div className="mt-4 text-xs text-muted-foreground text-right">
+            Total: {filteredVendors.length} {filteredVendors.length === 1 ? 'vendor' : 'vendors'}
           </div>
         </CardContent>
       </Card>
@@ -391,27 +546,7 @@ const VendorsList = () => {
         />
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the vendor "{vendorToDelete?.display_name}". 
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteVendor}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+     
     </div>
   );
 };

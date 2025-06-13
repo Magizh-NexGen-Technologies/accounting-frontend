@@ -12,16 +12,33 @@ import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import OTP from './otp/OTP';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+type UserData = {
+  id: number;
+  email: string;
+  role: string;
+  organization_id: string;
+  name: string;
+  organization_db: string;
+  admin_email: string;
+  admin_name: string;
+ 
+ 
+};
+
 const Login = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showOTP, setShowOTP] = useState(false);
+  const [loginStep, setLoginStep] = useState<'credentials' | 'otp' | 'complete'>('credentials');
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const [timer, setTimer] = useState(120);
+  const [userData, setUserData] = useState<UserData | null>(null);
 
   // If user is already authenticated, redirect to dashboard
   React.useEffect(() => {
@@ -65,7 +82,7 @@ const Login = () => {
         if (user.role === 'superadmin') {
           navigate('/superadmin');
         } else {
-          navigate(`/${organization.organization_id}/dashboard`);
+          navigate(`/${organization.organization_id || organization.id}/dashboard`);
         }
       }
     } catch (err) {
@@ -81,7 +98,6 @@ const Login = () => {
 
   const handleGoogleError = () => {
     setError('Google Sign-In failed. Please try again or use email/password login.');
-    
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,27 +106,38 @@ const Login = () => {
     setIsLoading(true);
     
     if (!identifier || !password) {
-      setError('Please enter your username, email, or phone number and password');
+      setError('Please enter your email and password');
       setIsLoading(false);
       return;
     }
     
     try {
-      // First, send OTP
-      const otpResponse = await axios.post(`${API_URL}/api/auth/otp/send`, {
-        identifier
+      // First, verify credentials
+      const credentialsResponse = await axios.post(`${API_URL}/api/auth/login/verify`, {
+        identifier,
+        password
       });
 
-      if (otpResponse.data.success) {
-        setShowOTP(true);
+      if (credentialsResponse.data.success) {
+        setUserData(credentialsResponse.data.data);
+        // Then, send OTP
+        const otpResponse = await axios.post(`${API_URL}/api/auth/otp/send`, {
+          identifier
+        });
+
+        if (otpResponse.data.success) {
+          setLoginStep('otp');
+          setShowOTP(true);
+        } else {
+          setError(otpResponse.data.message || 'Failed to send OTP. Please try again.');
+        }
       } else {
-        setError(otpResponse.data.message || 'Failed to send OTP. Please try again.');
+        setError(credentialsResponse.data.message || 'Invalid credentials');
       }
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const errorMessage = err.response?.data?.message || 'Login failed. Please try again.';
         setError(errorMessage);
-        console.error('OTP Error:', err.response?.data);
       } else if (err instanceof Error) {
         setError(err.message || 'Login failed. Please try again.');
       } else {
@@ -126,14 +153,10 @@ const Login = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('Verifying OTP for identifier:', identifier); // Debug log
-
       const response = await axios.post(`${API_URL}/api/auth/otp/verify`, {
         identifier,
         otp
       });
-
-      console.log('OTP verification response:', response.data); // Debug log
 
       if (response.data.success) {
         const { user, organization, token } = response.data.data;
@@ -145,28 +168,25 @@ const Login = () => {
         
         // Close OTP modal
         setShowOTP(false);
+        setLoginStep('complete');
         
         // Redirect based on role
         if (user.role === 'superadmin') {
           navigate('/superadmin');
         } else {
-          navigate(`/${organization.organization_id}/dashboard`);
+          navigate(`/${organization.organization_id || organization.id}/dashboard`);
         }
       } else {
         setError(response.data.message || 'OTP verification failed. Please try again.');
-        // Keep the OTP modal open if verification fails
         setShowOTP(true);
       }
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const errorMessage = err.response?.data?.message || 'OTP verification failed. Please try again.';
         setError(errorMessage);
-        console.error('OTP Verification Error:', err.response?.data);
-        // Keep the OTP modal open if verification fails
         setShowOTP(true);
       } else {
         setError('OTP verification failed. Please try again.');
-        // Keep the OTP modal open if verification fails
         setShowOTP(true);
       }
     } finally {
@@ -183,7 +203,6 @@ const Login = () => {
       });
       if (response.data.success) {
         setTimer(120); // Reset timer to 2 minutes
-        // Optionally show a success message
       } else {
         setError(response.data.message || 'Failed to resend OTP. Please try again.');
       }
@@ -215,7 +234,9 @@ const Login = () => {
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">Sign in to your account</CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access the system
+              {loginStep === 'credentials' ? 'Enter your credentials to access the system' :
+               loginStep === 'otp' ? 'Enter the verification code sent to your email' :
+               'Verifying your identity...'}
             </CardDescription>
           </CardHeader>
           
@@ -227,74 +248,84 @@ const Login = () => {
                 </Alert>
               )}
               
-              <div className="space-y-2">
-                <Label htmlFor="identifier">Email</Label>
-                <Input
-                  id="identifier"
-                  type="text"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  autoComplete="email"
-                  className="bg-white"
-                  placeholder="Enter your email"
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  className="bg-white"
-                  placeholder="Enter your password"
-                  required
-                />
-              </div>
+              {loginStep === 'credentials' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="identifier">Email</Label>
+                    <Input
+                      id="identifier"
+                      type="text"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      autoComplete="email"
+                      className="bg-white"
+                      placeholder="Enter your email"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      className="bg-white"
+                      placeholder="Enter your password"
+                      required
+                    />
+                  </div>
+                </>
+              )}
             </CardContent>
             
             <CardFooter className="flex flex-col gap-3">
-              <Button 
-                type="submit" 
-                className="w-full py-6 bg-gradient-to-r from-bizblue-500 to-bizteal-500 hover:from-bizblue-600 hover:to-bizteal-600" 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                    Signing In...
-                  </>
-                ) : (
-                  'Sign In'
-                )}
-              </Button>
+              {loginStep === 'credentials' && (
+                <Button 
+                  type="submit" 
+                  className="w-full py-6 bg-gradient-to-r from-bizblue-500 to-bizteal-500 hover:from-bizblue-600 hover:to-bizteal-600" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+                      Verifying...
+                    </>
+                  ) : (
+                    'Continue'
+                  )}
+                </Button>
+              )}
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-gray-500">Or continue with</span>
-                </div>
-              </div>
+              {loginStep === 'credentials' && (
+                <>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                    </div>
+                  </div>
 
-              <div id="google-signin-button" className="w-full">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleError}
-                  useOneTap
-                  theme="filled_blue"
-                  shape="rectangular"
-                  text="signin_with"
-                  width="400"
-                  context="signin"
-                  prompt_parent_id="google-signin-button"
-                  cancel_on_tap_outside={false}
-                />
-              </div>
+                  <div id="google-signin-button" className="w-full">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={handleGoogleError}
+                      useOneTap
+                      theme="filled_blue"
+                      shape="rectangular"
+                      text="signin_with"
+                      width="400"
+                      context="signin"
+                      prompt_parent_id="google-signin-button"
+                      cancel_on_tap_outside={false}
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="text-center text-sm text-slate-500">
                 <p>
@@ -321,7 +352,7 @@ const Login = () => {
             <Shield className="h-8 w-8 text-bizblue-500 mb-2" />
             <h3 className="text-xl font-semibold text-gray-800">Verify Your Identity</h3>
             <p className="text-sm text-gray-500 text-center">
-              Enter the 6-digit code sent to your email or phone.<br />
+              Enter the 6-digit code sent to your email.<br />
               This helps us keep your account secure.
             </p>
             {/* OTP Input */}

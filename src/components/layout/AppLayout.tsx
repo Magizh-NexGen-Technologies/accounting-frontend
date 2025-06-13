@@ -26,6 +26,13 @@ import {
   MessageSquare,
   FileText,
   File,
+  ChevronDown,
+  Wallet,
+  Calendar,
+  FileMinus,
+  FileX,
+  BarChart3,
+  Landmark,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -46,16 +53,29 @@ const navigationItems = [
   { name: "Point of Sale", path: "/pos", icon: ShoppingCart },
   { name: "Inventory", path: "/inventory", icon: Package },
   { name: "Sales", path: "/sales", icon: Receipt },
-  { name: "Purchases", path: "/purchases", icon: Truck },
-  { name: "Accounting", path: "/accounting", icon: BookOpen },
-  // { name: "CRM", path: "/crm", icon: Users },
-  // { name: "WhatsApp", path: "/whatsapp", icon: MessageSquare },
-  // { name: "E-Waybill", path: "/e-waybill", icon: FileText },
-  // { name: "GST E-Filing", path: "/gst-efiling", icon: File },
-  // { name: "Tax", path: "/tax", icon: Percent },
+  { name: "Purchases", path: "/purchases", icon: Truck, hasSubmenu: true },
+  { name: "Accounting", path: "/accounting", icon: BookOpen, hasSubmenu: true },
   { name: "Reports", path: "/reports", icon: ChartBar },
   { name: "User Management", path: "/users", icon: User },
   { name: "Settings", path: "/settings", icon: Settings },
+];
+
+// Purchases submenu items
+const purchasesSubmenu = [
+  { name: "Vendors", path: "/purchases/vendors", icon: Users },
+  { name: "Purchase Orders", path: "/purchases/purchase-orders", icon: ShoppingCart },
+  { name: "Bills", path: "/purchases/bills", icon: Receipt },
+  { name: "Payments Made", path: "/purchases/payments-made", icon: Wallet },
+  { name: "Recurring Bills", path: "/purchases/recurring-bills", icon: Calendar },
+  { name: "Vendor Credits", path: "/purchases/vendor-credits", icon: FileMinus },
+  { name: "Debit Notes", path: "/purchases/debit-notes", icon: FileX },
+];
+
+const accountingSubmenu = [
+  { name: "General Ledger", path: "/accounting/general-ledger", icon: BookOpen },
+  { name: "Journal Entries", path: "/accounting/journal", icon: FileText },
+  { name: "Financial Reports", path: "/accounting/reports", icon: BarChart3 },
+  { name: "Bank", path: "/accounting/bank", icon: Landmark },
 ];
 
 const AppLayout: React.FC<{ organization?: { name?: string } }> = ({ organization }) => {
@@ -63,6 +83,7 @@ const AppLayout: React.FC<{ organization?: { name?: string } }> = ({ organizatio
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
+  const [expandedMenu, setExpandedMenu] = useState<null | 'purchases' | 'accounting'>(null);
   const { organizationId } = useParams();
   const basePath = organizationId ? `/${organizationId}` : "";
   const navigate = useNavigate();
@@ -78,9 +99,9 @@ const AppLayout: React.FC<{ organization?: { name?: string } }> = ({ organizatio
   };
 
   return (
-    <div className="flex bg-gray-50">
+    <div className="layout-container">
       {/* Sidebar */}
-      <aside
+      <aside 
         className={cn(
           "fixed inset-y-0 left-0 z-20 flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
@@ -132,23 +153,184 @@ const AppLayout: React.FC<{ organization?: { name?: string } }> = ({ organizatio
           <ul className="space-y-1"> 
             {navigationItems.map((item) => (
               <li key={item.path}>
-                <Link
-                  to={`${basePath}${item.path}`}
-                  className={cn(
-                    "flex items-center rounded-md px-3 py-2 text-sm font-medium",
-                    location.pathname === `${basePath}${item.path}` ||
-                      location.pathname.startsWith(`${basePath}${item.path}/`)
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    sidebarMinimized && "justify-center"
-                  )}
-                  title={sidebarMinimized ? item.name : undefined}
-                >
-                  <item.icon
-                    className={cn("h-5 w-5", !sidebarMinimized && "mr-3")}
-                  />
-                  {!sidebarMinimized && <span>{item.name}</span>}
-                </Link>
+                {item.hasSubmenu ? (
+                  <>
+                    {item.name === "Purchases" ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (expandedMenu !== 'purchases') {
+                              navigate(`${basePath}/purchases/vendors`);
+                              setExpandedMenu('purchases');
+                            } else {
+                              setExpandedMenu(null);
+                            }
+                          }}
+                          className={cn(
+                            "w-full flex items-center rounded-md px-3 py-2 text-sm font-medium",
+                            location.pathname.startsWith(`${basePath}${item.path}`)
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                            sidebarMinimized && "justify-center"
+                          )}
+                        >
+                          <item.icon className={cn("h-5 w-5", !sidebarMinimized && "mr-3")} />
+                          {!sidebarMinimized && (
+                            <>
+                              <span className="flex-1 text-left">{item.name}</span>
+                              <ChevronDown
+                                className={cn(
+                                  "h-4 w-4 transition-transform duration-200 ml-2",
+                                  expandedMenu === 'purchases' ? "transform rotate-180" : ""
+                                )}
+                              />
+                            </>
+                          )}
+                        </button>
+                        {!sidebarMinimized && expandedMenu === 'purchases' && (
+                          <ul className="mt-1 space-y-1 pl-4">
+                            {purchasesSubmenu.map((subItem) => (
+                              <li key={subItem.path}>
+                                <Link
+                                  to={`${basePath}${subItem.path}`}
+                                  className={cn(
+                                    "flex items-center rounded-md px-3 py-2 text-sm font-medium",
+                                    location.pathname === `${basePath}${subItem.path}`
+                                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                                  )}
+                                >
+                                  <subItem.icon className="h-5 w-5 mr-3" />
+                                  <span>{subItem.name}</span>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
+                    ) : item.name === "Accounting" ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (expandedMenu !== 'accounting') {
+                              navigate(`${basePath}/accounting/general-ledger`);
+                              setExpandedMenu('accounting');
+                            } else {
+                              setExpandedMenu(null);
+                            }
+                          }}
+                          className={cn(
+                            "w-full flex items-center rounded-md px-3 py-2 text-sm font-medium",
+                            location.pathname.startsWith(`${basePath}${item.path}`)
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                            sidebarMinimized && "justify-center"
+                          )}
+                        >
+                          <item.icon className={cn("h-5 w-5", !sidebarMinimized && "mr-3")} />
+                          {!sidebarMinimized && (
+                            <>
+                              <span className="flex-1 text-left">{item.name}</span>
+                              <ChevronDown
+                                className={cn(
+                                  "h-4 w-4 transition-transform duration-200 ml-2",
+                                  expandedMenu === 'accounting' ? "transform rotate-180" : ""
+                                )}
+                              />
+                            </>
+                          )}
+                        </button>
+                        {!sidebarMinimized && expandedMenu === 'accounting' && (
+                          <ul className="mt-1 space-y-1 pl-4">
+                            {accountingSubmenu.map((subItem) => (
+                              <li key={subItem.path}>
+                                <Link
+                                  to={`${basePath}${subItem.path}`}
+                                  className={cn(
+                                    "flex items-center rounded-md px-3 py-2 text-sm font-medium",
+                                    location.pathname === `${basePath}${subItem.path}`
+                                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                                  )}
+                                >
+                                  <subItem.icon className="h-5 w-5 mr-3" />
+                                  <span>{subItem.name}</span>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (expandedMenu !== 'purchases') {
+                              navigate(`${basePath}/purchases/vendors`);
+                              setExpandedMenu('purchases');
+                            }
+                          }}
+                          className={cn(
+                            "w-full flex items-center rounded-md px-3 py-2 text-sm font-medium",
+                            location.pathname.startsWith(`${basePath}${item.path}`)
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                            sidebarMinimized && "justify-center"
+                          )}
+                        >
+                          <item.icon className={cn("h-5 w-5", !sidebarMinimized && "mr-3")} />
+                          {!sidebarMinimized && (
+                            <>
+                              <span className="flex-1 text-left">{item.name}</span>
+                              <ChevronDown
+                                className={cn(
+                                  "h-4 w-4 transition-transform duration-200 ml-2",
+                                  expandedMenu === 'purchases' ? "transform rotate-180" : ""
+                                )}
+                              />
+                            </>
+                          )}
+                        </button>
+                        {!sidebarMinimized && expandedMenu === 'purchases' && (
+                          <ul className="mt-1 space-y-1 pl-4">
+                            {purchasesSubmenu.map((subItem) => (
+                              <li key={subItem.path}>
+                                <Link
+                                  to={`${basePath}${subItem.path}`}
+                                  className={cn(
+                                    "flex items-center rounded-md px-3 py-2 text-sm font-medium",
+                                    location.pathname === `${basePath}${subItem.path}`
+                                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                                  )}
+                                >
+                                  <subItem.icon className="h-5 w-5 mr-3" />
+                                  <span>{subItem.name}</span>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <Link
+                    to={`${basePath}${item.path}`}
+                    className={cn(
+                      "flex items-center rounded-md px-3 py-2 text-sm font-medium",
+                      location.pathname === `${basePath}${item.path}` ||
+                        location.pathname.startsWith(`${basePath}${item.path}/`)
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                      sidebarMinimized && "justify-center"
+                    )}
+                    title={sidebarMinimized ? item.name : undefined}
+                  >
+                    <item.icon className={cn("h-5 w-5", !sidebarMinimized && "mr-3")} />
+                    {!sidebarMinimized && <span>{item.name}</span>}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
@@ -231,7 +413,7 @@ const AppLayout: React.FC<{ organization?: { name?: string } }> = ({ organizatio
                       </AvatarFallback>
                     </Avatar>
                   </Button>
-                </DropdownMenuTrigger>
+                </DropdownMenuTrigger> 
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">

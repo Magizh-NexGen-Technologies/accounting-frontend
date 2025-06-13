@@ -17,6 +17,7 @@ export interface Vendor {
   state: string;
   district: string;
   country: string;
+  pincode: string;
   bankDetails: {
     accountHolderName: string;
     bankName: string;
@@ -26,6 +27,9 @@ export interface Vendor {
   status: 'active' | 'inactive';
   created: string;
   balance: number;
+  taxRates: string[];
+  paymentTerms: string;
+  businessType: string;
 }
 
 // Expense entity type
