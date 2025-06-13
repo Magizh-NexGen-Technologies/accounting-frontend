@@ -9,7 +9,7 @@ import { BrandingProvider } from './contexts/BrandingContext';
 import './App.css';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
+ 
 const App: React.FC = () => {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
@@ -17,7 +17,6 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/*" element={<Index />} />
-          
         </Routes>
         <Toaster position="top-right" richColors />
       </BrandingProvider>

@@ -19,7 +19,7 @@ export interface User {
 }
 
 // Auth context structure
-interface AuthContextType {
+interface AuthContextType { 
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;

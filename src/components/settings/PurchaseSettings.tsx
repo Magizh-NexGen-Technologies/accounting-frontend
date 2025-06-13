@@ -226,18 +226,13 @@ const PurchaseSettings = () => {
   const [poCounters, setPoCounters] = useState<NumberCounter[]>([]);
   const [billCounters, setBillCounters] = useState<NumberCounter[]>([]);
   
-  const [paymentTerms, setPaymentTerms] = useState<string[]>([]);
-  
   const [settings, setSettings] = useState({
     poPrefix: '',
     billPrefix: '',
-    defaultPurchaseTax: 18,
-    defaultPaymentTerm: '',
     vendorCategories: ['General', 'Inventory', 'Services', 'Equipment'],
     selectedCategory: 'General'
   });
 
-  const [taxRates, setTaxRates] = useState<number[]>([]);
   const [vendorCategories, setVendorCategories] = useState<string[]>([]);
 
   const { organizationId } = useParams();
@@ -311,13 +306,9 @@ const PurchaseSettings = () => {
       setSettings({
         poPrefix: data.po_prefix,
         billPrefix: data.bill_prefix,
-        defaultPurchaseTax: data.default_purchase_tax,
-        defaultPaymentTerm: data.default_payment_term || '',
         vendorCategories: data.vendor_categories || [],
         selectedCategory: data.selected_category || ''
       });
-      setTaxRates(data.tax_rates || []);
-      setPaymentTerms(data.payment_terms || []);
       setVendorCategories(data.vendor_categories || []);
       setPoCounters(data.counters.filter(c => c.type === 'PO'));
       setBillCounters(data.counters.filter(c => c.type === 'BILL'));
@@ -349,19 +340,6 @@ const PurchaseSettings = () => {
     }
   };
 
-  // Delete a tax rate from backend and update UI
-  const handleDeleteTaxRate = async (rate) => {
-    try {
-      await axios.delete(`${API_URL}/api/dashboard/${organizationId}/settings/purchase-settings/0`, {
-        data: { taxRate: rate }
-      });
-      toast.success('Tax rate deleted');
-      fetchPurchaseSettings(organizationId);
-    } catch (err) {
-      toast.error('Failed to delete tax rate');
-    }
-  };
-
   // Delete a vendor category from backend and update UI
   const handleDeleteVendorCategory = async (category) => {
     try {
@@ -372,19 +350,6 @@ const PurchaseSettings = () => {
       fetchPurchaseSettings(organizationId);
     } catch (err) {
       toast.error('Failed to delete category');
-    }
-  };
-
-  // Add handler for deleting payment terms
-  const handleDeletePaymentTerm = async (term) => {
-    try {
-      await axios.delete(`${API_URL}/api/dashboard/${organizationId}/settings/purchase-settings/0`, {
-        data: { paymentTerm: term }
-      });
-      toast.success('Payment term deleted');
-      fetchPurchaseSettings(organizationId);
-    } catch (err) {
-      toast.error('Failed to delete payment term');
     }
   };
 
@@ -399,10 +364,6 @@ const PurchaseSettings = () => {
       bill_prefix: settings.billPrefix,
       financial_year_start_date: financialStartDate,
       financial_year_end_date: financialEndDate,
-      default_purchase_tax: settings.defaultPurchaseTax,
-      default_payment_term: settings.defaultPaymentTerm,
-      tax_rates: taxRates,
-      payment_terms: paymentTerms,
       vendor_categories: vendorCategories,
       selected_category: settings.selectedCategory
     }, !hasSettings).finally(() => setSaving(false));
@@ -536,57 +497,7 @@ const PurchaseSettings = () => {
             </div>
           </CardContent>
         </Card>
-         {/* Default Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Default Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <DropdownInput
-                  label="Default Purchase Tax (%)"
-                  placeholder="Search or create tax"
-                  values={taxRates}
-                  value={settings.defaultPurchaseTax}
-                  onChange={v => handleInputChange('defaultPurchaseTax', v)}
-                  onAdd={v => {
-                    setTaxRates([...taxRates, v].sort((a, b) => a - b));
-                    handleInputChange('defaultPurchaseTax', v);
-                  }}
-                  onEdit={(oldV, newV) => {
-                    setTaxRates(taxRates.map(r => r === oldV ? newV : r).sort((a, b) => a - b));
-                    if (settings.defaultPurchaseTax === oldV) handleInputChange('defaultPurchaseTax', newV);
-                  }}
-                  onDelete={handleDeleteTaxRate}
-                  inputType="number"
-                  isNumber
-                />
-              </div>
-              
-              <div className="space-y-4">
-                <DropdownInput
-                  label="Default Payment Term"
-                  placeholder="Search or create payment term"
-                  values={paymentTerms}
-                  value={settings.defaultPaymentTerm}
-                  onChange={v => handleInputChange('defaultPaymentTerm', v)}
-                  onAdd={v => {
-                    setPaymentTerms([...paymentTerms, v]);
-                    handleInputChange('defaultPaymentTerm', v);
-                  }}
-                  onEdit={(oldV, newV) => {
-                    setPaymentTerms(paymentTerms.map(t => t === oldV ? newV : t));
-                    if (settings.defaultPaymentTerm === oldV) handleInputChange('defaultPaymentTerm', newV);
-                  }}
-                  onDelete={handleDeletePaymentTerm}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card> 
-
-        {/* Vendor Categories */}
+         {/* Vendor Categories */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-semibold">Vendor Categories</CardTitle>

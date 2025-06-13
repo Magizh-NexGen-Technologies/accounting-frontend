@@ -1,17 +1,42 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { mockAccounts, mockTransactions } from '@/data/mockAccounting';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import ChartOfAccounts from '@/components/accounting/ChartOfAccounts';
 import JournalEntries from '@/components/accounting/JournalEntries';
 import Banks from '@/components/accounting/Banks';
-import { BookOpen, FileText, BarChart3, PieChart, Landmark   } from 'lucide-react';
+import { BookOpen, FileText, BarChart3, PieChart, Landmark } from 'lucide-react';
 
-
+const tabMap = {
+  'general-ledger': 'general-ledger',
+  'journal': 'journal',
+  'reports': 'reports',
+  'bank': 'bank',
+};
 
 const Accounting: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('general-ledger');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { organizationId } = useParams();
+
+  const getCurrentTab = () => {
+    const currentPath = location.pathname;
+    const pathParts = currentPath.split('/');
+    const lastPart = pathParts[pathParts.length - 1];
+    return tabMap[lastPart] || 'general-ledger';
+  };
+
+  const [activeTab, setActiveTab] = useState(getCurrentTab());
+
+  useEffect(() => {
+    setActiveTab(getCurrentTab());
+  }, [location]);
+
+  const handleTabChange = (tabValue: string) => {
+    setActiveTab(tabValue);
+    navigate(`/${organizationId}/accounting/${tabValue}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -22,8 +47,7 @@ const Accounting: React.FC = () => {
         </p>
       </div>
       <Separator />
-      
-      <Tabs defaultValue="general-ledger" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <div className="bg-card rounded-lg p-1 border shadow-sm">
           <TabsList className="w-full grid grid-cols-4 h-12">
             <TabsTrigger value="general-ledger" className="flex items-center gap-2">
@@ -41,7 +65,6 @@ const Accounting: React.FC = () => {
               <span className="hidden sm:inline">Financial Reports</span>
               <span className="sm:hidden">Reports</span>
             </TabsTrigger>
-
             <TabsTrigger value="bank" className="flex items-center gap-2">
               <Landmark className="h-4 w-4" />
               <span className="hidden sm:inline">Bank</span>
@@ -49,23 +72,18 @@ const Accounting: React.FC = () => {
             </TabsTrigger>
           </TabsList>
         </div>
-        
         <TabsContent value="general-ledger" className="mt-6">
           <ChartOfAccounts accounts={mockAccounts} />
         </TabsContent>
-        
         <TabsContent value="journal" className="mt-6">
           <JournalEntries 
             transactions={mockTransactions} 
             accounts={mockAccounts} 
           />
         </TabsContent>
-
         <TabsContent value="bank" className="mt-6">
           <Banks />
         </TabsContent>
-        
-        
         <TabsContent value="reports" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="rounded-lg border shadow-sm p-6 bg-card text-center flex flex-col items-center justify-center gap-4 min-h-[200px]">
@@ -77,9 +95,8 @@ const Accounting: React.FC = () => {
                 <p className="text-muted-foreground mt-2">
                   Financial reports will be available in a future update.
                 </p>
-              </div>
+              </div> 
             </div>
-            
             <div className="rounded-lg border shadow-sm p-6 bg-card text-center flex flex-col items-center justify-center gap-4 min-h-[200px]">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
                 <BarChart3 className="h-8 w-8 text-primary" />

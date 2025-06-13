@@ -1,15 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Vendor } from '@/models/purchases';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { useTax } from '@/contexts/TaxContext';
+import PersonalAndCompanyInfo from './VendorsSteps/PersonalAndCompanyInfo';
+import BillingAddress from './VendorsSteps/BillingAddress';
+import ShippingAddress from './VendorsSteps/ShippingAddress';
+import BankDetails from './VendorsSteps/BankDetails';
+import TaxAndPayment from './VendorsSteps/TaxAndPayment';
+import ConfirmVendors from './VendorsSteps/ConfirmVendors';
+import BackButton from '@/components/ui/back-button';
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+type GSTSettings = {
+  payment_terms: string[];
+  // Add other properties if needed
+};
 
 interface VendorFormProps {
   vendor?: Vendor;
@@ -18,7 +30,9 @@ interface VendorFormProps {
   onSubmit: (vendor: Vendor) => void;
 }
 
-interface VendorFormData {
+interface Vendor {
+  id: number;
+  vendorId: string;
   firstName: string;
   lastName: string;
   companyName: string;
@@ -32,6 +46,7 @@ interface VendorFormData {
   state: string;
   district: string;
   country: string;
+  pincode: string;
   bankDetails: {
     accountHolderName: string;
     bankName: string;
@@ -40,14 +55,93 @@ interface VendorFormData {
     ifsc: string;
   };
   status: 'active' | 'inactive';
+  created: string;
+  balance: number;
+  gstin: string;
+  openingBalance: number;
+  billingAddress: {
+    doorNo: string;
+    city: string;
+    state: string;
+    district: string;
+    country: string;
+    pincode: string;
+  };
+  shippingAddress: {
+    doorNo: string;
+    city: string;
+    state: string;
+    district: string;
+    country: string;
+    pincode: string;
+  };
+  sameAsBilling: boolean;
+  paymentTerms: string;
+  businessType: string;
+  tdsApplicable: boolean;
 }
+
+interface PersonalAndCompanyInfoProps {
+  formData: Vendor;
+  onInputChange: (field: string, value: string) => void;
+  vendorCategories: string[];
+  loadingCategories: boolean;
+  onBack: () => void;
+}
+
+interface BillingAddressProps {
+  formData: Vendor;
+  onInputChange: (field: string, value: string) => void;
+  onBack: () => void;
+}
+
+interface ShippingAddressProps {
+  formData: Vendor;
+  onInputChange: (field: string, value: string) => void;
+  onBack: () => void;
+}
+
+interface BankDetailsProps {
+  formData: Vendor;
+  onInputChange: (field: string, value: string) => void;
+  onBack: () => void;
+}
+
+interface TaxAndPaymentProps {
+  formData: Vendor;
+  onInputChange: (field: string, value: string) => void;
+  gstSettings: GSTSettings;
+  loadingTaxData: boolean;
+  onBack: () => void;
+}
+
+interface ConfirmVendorsProps {
+  formData: Vendor;
+  originalData: Vendor;
+  isEditing: boolean;
+  onConfirm: () => void;
+  onBack: () => void;
+}
+
+const STEPS = [
+  { id: 'personal', title: 'Personal & Company Info' },
+  { id: 'billing', title: 'Billing Address' },
+  { id: 'shipping', title: 'Shipping Address' },
+  { id: 'bank', title: 'Bank Details' },
+  { id: 'tax', title: 'Tax & Payment' },
+  { id: 'confirm', title: 'Confirm Details' }
+];
 
 const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubmit }) => {
   const isEditing = !!vendor;
   const { organizationId } = useParams();
+  const { taxRates, gstSettings, loading: loadingTaxData } = useTax();
   const [vendorCategories, setVendorCategories] = React.useState<string[]>([]);
   const [loadingCategories, setLoadingCategories] = React.useState(false);
-  const [formData, setFormData] = React.useState<VendorFormData>({
+  const [currentStep, setCurrentStep] = useState(0);
+  const [formData, setFormData] = React.useState<Vendor>({
+    id: vendor?.id || 0,
+    vendorId: vendor?.vendorId || '',
     firstName: vendor?.firstName || '',
     lastName: vendor?.lastName || '',
     companyName: vendor?.companyName || '',
@@ -61,6 +155,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
     state: vendor?.state || '',
     district: vendor?.district || '',
     country: vendor?.country || '',
+    pincode: vendor?.pincode || '',
     bankDetails: {
       accountHolderName: vendor?.bankDetails?.accountHolderName || '',
       bankName: vendor?.bankDetails?.bankName || '',
@@ -68,7 +163,31 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
       confirmAccountNumber: vendor?.bankDetails?.accountNumber || '',
       ifsc: vendor?.bankDetails?.ifsc || ''
     },
-    status: vendor?.status || 'active'
+    status: vendor?.status || 'active',
+    created: vendor?.created || new Date().toISOString(),
+    balance: typeof vendor?.balance === 'string' ? parseFloat(vendor.balance) : (vendor?.balance || 0),
+    gstin: vendor?.gstin || '',
+    openingBalance: typeof vendor?.openingBalance === 'string' ? parseFloat(vendor.openingBalance) : (vendor?.openingBalance || 0),
+    billingAddress: {
+      doorNo: vendor?.billingAddress?.doorNo || '',
+      city: vendor?.billingAddress?.city || '',
+      state: vendor?.billingAddress?.state || '',
+      district: vendor?.billingAddress?.district || '',
+      country: vendor?.billingAddress?.country || '',
+      pincode: vendor?.billingAddress?.pincode || '',
+    },
+    shippingAddress: {
+      doorNo: vendor?.shippingAddress?.doorNo || '',
+      city: vendor?.shippingAddress?.city || '',
+      state: vendor?.shippingAddress?.state || '',
+      district: vendor?.shippingAddress?.district || '',
+      country: vendor?.shippingAddress?.country || '',
+      pincode: vendor?.shippingAddress?.pincode || '',
+    },
+    sameAsBilling: true,
+    paymentTerms: vendor?.paymentTerms || '',
+    businessType: vendor?.businessType || 'regular',
+    tdsApplicable: vendor?.tdsApplicable || false,
   });
 
   React.useEffect(() => {
@@ -110,13 +229,44 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSameAsBillingChange = (checked: boolean) => {
+    if (checked) {
+      setFormData(prev => ({
+        ...prev,
+        sameAsBilling: true,
+        shippingAddress: { ...prev.billingAddress }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        sameAsBilling: false,
+        shippingAddress: {
+          doorNo: '',
+          city: '',
+          state: '',
+          district: '',
+          country: '',
+          pincode: ''
+        }
+      }));
+    }
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     
     // Basic validation
     if (!formData.firstName || !formData.lastName || !formData.companyName || 
         !formData.displayName || !formData.email || !formData.category) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Add validation for new fields
+    if (!formData.gstin) {
+      toast.error('GSTIN is required');
       return;
     }
 
@@ -142,15 +292,27 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
         state: formData.state,
         district: formData.district,
         country: formData.country,
+        pincode: formData.pincode,
         bankDetails: {
           accountHolderName: formData.bankDetails.accountHolderName,
           bankName: formData.bankDetails.bankName,
           accountNumber: formData.bankDetails.accountNumber,
+          confirmAccountNumber: formData.bankDetails.confirmAccountNumber,
           ifsc: formData.bankDetails.ifsc
         },
         status: formData.status,
         created: vendor?.created || new Date().toISOString(),
-        balance: typeof vendor?.balance === 'string' ? parseFloat(vendor.balance) : (vendor?.balance || 0)
+        balance: typeof vendor?.balance === 'string' ? parseFloat(vendor.balance) : (vendor?.balance || 0),
+        gstin: formData.gstin,
+        openingBalance: typeof formData.openingBalance === 'string' 
+          ? parseFloat(formData.openingBalance) 
+          : formData.openingBalance,
+        billingAddress: formData.billingAddress,
+        shippingAddress: formData.shippingAddress,
+        sameAsBilling: formData.sameAsBilling,
+        paymentTerms: formData.paymentTerms,
+        businessType: formData.businessType,
+        tdsApplicable: formData.tdsApplicable,
       };
 
       if (vendor) {
@@ -175,227 +337,169 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
     }
   };
 
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    } else {
+      onClose();
+    }
+  };
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 0:
+        return (
+          <div className="space-y-6">
+            <PersonalAndCompanyInfo
+              formData={formData}
+              onInputChange={handleInputChange}
+              vendorCategories={vendorCategories}
+              loadingCategories={loadingCategories}
+              onBack={handleBack}
+            />
+            <div className="flex justify-between space-x-4 pt-4">
+              <Button type="button" variant="outline" onClick={handleBack}>
+                Back
+              </Button>
+              <Button type="button" onClick={() => setCurrentStep(currentStep + 1)}>
+                Next
+              </Button>
+            </div>
+          </div>
+        );
+      case 1:
+        return (
+          <div className="space-y-6">
+            <BillingAddress
+              formData={formData}
+              onInputChange={handleInputChange}
+              onBack={handleBack}
+            />
+            <div className="flex justify-between space-x-4 pt-4">
+              <Button type="button" variant="outline" onClick={handleBack}>
+                Back
+              </Button>
+              <Button type="button" onClick={() => setCurrentStep(currentStep + 1)}>
+                Next
+              </Button>
+            </div>
+          </div>
+        );
+      case 2:
+        return (
+          <div className="space-y-6">
+            <ShippingAddress
+              formData={formData}
+              onInputChange={handleInputChange}
+              onBack={handleBack}
+            />
+            <div className="flex justify-between space-x-4 pt-4">
+              <Button type="button" variant="outline" onClick={handleBack}>
+                Back
+              </Button>
+              <Button type="button" onClick={() => setCurrentStep(currentStep + 1)}>
+                Next
+              </Button>
+            </div>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="space-y-6">
+            <BankDetails
+              formData={formData}
+              onInputChange={handleInputChange}
+              onBack={handleBack}
+            />
+            <div className="flex justify-between space-x-4 pt-4">
+              <Button type="button" variant="outline" onClick={handleBack}>
+                Back
+              </Button>
+              <Button type="button" onClick={() => setCurrentStep(currentStep + 1)}>
+                Next
+              </Button>
+            </div>
+          </div>
+        );
+      case 4:
+        return (
+          <div className="space-y-6">
+            <TaxAndPayment
+              formData={formData}
+              onInputChange={handleInputChange}
+              gstSettings={gstSettings}
+              loadingTaxData={loadingTaxData}
+              onBack={handleBack}
+            />
+            <div className="flex justify-between space-x-4 pt-4">
+              <Button type="button" variant="outline" onClick={handleBack}>
+                Back
+              </Button>
+              <Button type="button" onClick={() => setCurrentStep(currentStep + 1)}>
+                Next
+              </Button>
+            </div>
+          </div>
+        );
+      case 5:
+        return (
+          <div className="space-y-6">
+            <ConfirmVendors
+              formData={formData}
+              originalData={vendor}
+              isEditing={isEditing}
+              onConfirm={() => handleSubmit()}
+              onBack={handleBack}
+            />
+            <div className="flex justify-between space-x-4 pt-4">
+              <Button type="button" variant="outline" onClick={handleBack}>
+                Back
+              </Button>
+              <Button type="button" onClick={() => handleSubmit()}>
+                {isEditing ? 'Update' : 'Create'}
+              </Button>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto p-6">
+      <DialogContent className="sm:max-w-[1200px] max-h-[100vh] overflow-y-auto p-6">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Vendor' : 'Add New Vendor'}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Personal & Company Info */}
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Personal & Company Info</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">First Name *</label>
-                <Input
-                  value={formData.firstName}
-                  onChange={(e) => handleInputChange('firstName', e.target.value)}
-                  placeholder="Enter first name"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Last Name *</label>
-                <Input
-                  value={formData.lastName}
-                  onChange={(e) => handleInputChange('lastName', e.target.value)}
-                  placeholder="Enter last name"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Company Name *</label>
-                <Input
-                  value={formData.companyName}
-                  onChange={(e) => handleInputChange('companyName', e.target.value)}
-                  placeholder="Enter company name"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Display Name *</label>
-                <Input
-                  value={formData.displayName}
-                  onChange={(e) => handleInputChange('displayName', e.target.value)}
-                  placeholder="Enter display name"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Email *</label>
-                <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="vendor@example.com"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Category *</label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => handleInputChange('category', value)}
-                  disabled={loadingCategories}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            {STEPS.map((step, index) => (
+              <div
+                key={step.id}
+                className={`flex items-center ${
+                  index <= currentStep ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    index <= currentStep ? 'bg-primary text-white' : 'bg-muted'
+                  }`}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={loadingCategories ? "Loading..." : "Select category"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendorCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {index + 1}
+                </div>
+                <span className="ml-2">{step.title}</span>
+                {index < STEPS.length - 1 && (
+                  <div className="w-16 h-0.5 mx-4 bg-muted" />
+                )}
               </div>
-              <div>
-                <label className="text-sm font-medium">Work Phone</label>
-                <Input
-                  value={formData.workPhone}
-                  onChange={(e) => handleInputChange('workPhone', e.target.value)}
-                  placeholder="Enter work phone"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Mobile</label>
-                <Input
-                  value={formData.mobile}
-                  onChange={(e) => handleInputChange('mobile', e.target.value)}
-                  placeholder="Enter mobile number"
-                />
-              </div>
-            </div>
+            ))}
           </div>
+        </div>
 
-          <hr className="my-2" />
-
-          {/* Address Info */}
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Address Info</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Door No</label>
-                <Input
-                  value={formData.doorNo}
-                  onChange={(e) => handleInputChange('doorNo', e.target.value)}
-                  placeholder="Enter door number"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">City</label>
-                <Input
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="Enter city"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">State</label>
-                <Input
-                  value={formData.state}
-                  onChange={(e) => handleInputChange('state', e.target.value)}
-                  placeholder="Enter state"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">District</label>
-                <Input
-                  value={formData.district}
-                  onChange={(e) => handleInputChange('district', e.target.value)}
-                  placeholder="Enter district"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Country</label>
-                <Input
-                  value={formData.country}
-                  onChange={(e) => handleInputChange('country', e.target.value)}
-                  placeholder="Enter country"
-                />
-              </div>
-            </div>
-          </div>
-
-          <hr className="my-2" />
-
-          {/* Bank Details */}
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Bank Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium">Account Holder Name</label>
-                <Input
-                  value={formData.bankDetails.accountHolderName}
-                  onChange={(e) => handleInputChange('bankDetails.accountHolderName', e.target.value)}
-                  placeholder="Enter account holder name"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Bank Name</label>
-                <Input
-                  value={formData.bankDetails.bankName}
-                  onChange={(e) => handleInputChange('bankDetails.bankName', e.target.value)}
-                  placeholder="Enter bank name"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Account Number</label>
-                <Input
-                  value={formData.bankDetails.accountNumber}
-                  onChange={(e) => handleInputChange('bankDetails.accountNumber', e.target.value)}
-                  placeholder="Enter account number"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Re-enter Account Number</label>
-                <Input
-                  value={formData.bankDetails.confirmAccountNumber}
-                  onChange={(e) => handleInputChange('bankDetails.confirmAccountNumber', e.target.value)}
-                  placeholder="Re-enter account number"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">IFSC Code</label>
-                <Input
-                  value={formData.bankDetails.ifsc}
-                  onChange={(e) => handleInputChange('bankDetails.ifsc', e.target.value)}
-                  placeholder="Enter IFSC code"
-                />
-              </div>
-            </div>
-          </div>
-
-          <hr className="my-2" />
-
-          {/* Status */}
-          <div>
-            <label className="text-sm font-medium">Status</label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) => handleInputChange('status', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit">
-              {isEditing ? 'Update Vendor' : 'Add Vendor'}
-            </Button>
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {renderStep()}
         </form>
       </DialogContent>
     </Dialog>

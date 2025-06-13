@@ -17,7 +17,7 @@ const OTP: React.FC<OTPInputProps> = ({ length = 6, onComplete, disabled = false
   const handleChange = (index: number, value: string) => {
     if (!/^[0-9]?$/.test(value)) return;
     const newOtp = [...otp];
-    newOtp[index] = value; 
+    newOtp[index] = value;  
     setOtp(newOtp);
 
     if (value && index < length - 1) {
