@@ -38,3 +38,7 @@ dist-ssr
 
 # Bun
 bun.lockb
+
+# Do NOT ignore public folder and its contents
+!public/
+!public/**/*
