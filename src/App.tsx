@@ -14,7 +14,7 @@ const App: React.FC = () => {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <BrandingProvider>
-        <Routes>
+        <Routes> 
           <Route path="/" element={<LandingPage />} />
           <Route path="/*" element={<Index />} />
         </Routes>

@@ -16,8 +16,20 @@ interface BrandSettings {
   logo_url: string;
   favicon_url: string;
   updated_at: string;
-  created_at?: string;
+  created_at?: string; 
 }
+
+const getFileUrl = (path: string) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  // All files are now in branding-image folder
+  if (path.startsWith('/branding-image/')) {
+    return `${API_URL}${path}`;
+  }
+  return `${API_URL}/branding-image/${path}`;
+};
 
 export default function Branding() {
   const { updateBranding } = useBranding();
@@ -101,7 +113,7 @@ export default function Branding() {
             {settings.logo_url && (
               <div className="flex justify-center p-4 border rounded-lg bg-muted w-full md:w-1/6">
                 <img 
-                  src={settings.logo_url} 
+                  src={getFileUrl(settings.logo_url)} 
                   alt="Company Logo Preview" 
                   className="max-h-40 object-contain"
                 />
@@ -139,7 +151,7 @@ export default function Branding() {
             {settings.favicon_url && (
               <div className="flex justify-center items-center p-4 border rounded-lg bg-muted w-full md:w-1/6">
                 <img 
-                  src={settings.favicon_url} 
+                  src={getFileUrl(settings.favicon_url)} 
                   alt="Favicon Preview" 
                   className="w-16 h-16 object-contain"
                 />
