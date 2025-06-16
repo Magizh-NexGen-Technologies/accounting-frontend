@@ -51,7 +51,7 @@ export const TaxProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLoading(true);
     setError(null);
     
-    try {
+    try { 
      
       
       // Fetch tax rates
@@ -112,3 +112,21 @@ export const useTax = () => {
 };
 
 export default TaxContext;
+
+export function getTaxGroupSummary(group: TaxRate, allTaxes: TaxRate[]): string {
+  try {
+    const desc = JSON.parse(group.tax_description || "{}");
+    if (desc.taxes && Array.isArray(desc.taxes)) {
+      return desc.taxes
+        .map((id: number) => {
+          const t = allTaxes.find(tax => Number(tax.id) === Number(id));
+          return t ? `${t.tax_name} (${t.tax_type} ${t.tax_rate}%)` : "";
+        })
+        .filter(Boolean)
+        .join(" + ");
+    }
+  } catch {
+    // ignore JSON parse errors
+  }
+  return "";
+}

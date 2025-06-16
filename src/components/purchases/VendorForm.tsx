@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ import ShippingAddress from './VendorsSteps/ShippingAddress';
 import BankDetails from './VendorsSteps/BankDetails';
 import TaxAndPayment from './VendorsSteps/TaxAndPayment';
 import ConfirmVendors from './VendorsSteps/ConfirmVendors';
-import BackButton from '@/components/ui/back-button';
+
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -79,49 +79,9 @@ interface Vendor {
   paymentTerms: string;
   businessType: string;
   tdsApplicable: boolean;
+  taxId: string;
 }
 
-interface PersonalAndCompanyInfoProps {
-  formData: Vendor;
-  onInputChange: (field: string, value: string) => void;
-  vendorCategories: string[];
-  loadingCategories: boolean;
-  onBack: () => void;
-}
-
-interface BillingAddressProps {
-  formData: Vendor;
-  onInputChange: (field: string, value: string) => void;
-  onBack: () => void;
-}
-
-interface ShippingAddressProps {
-  formData: Vendor;
-  onInputChange: (field: string, value: string) => void;
-  onBack: () => void;
-}
-
-interface BankDetailsProps {
-  formData: Vendor;
-  onInputChange: (field: string, value: string) => void;
-  onBack: () => void;
-}
-
-interface TaxAndPaymentProps {
-  formData: Vendor;
-  onInputChange: (field: string, value: string) => void;
-  gstSettings: GSTSettings;
-  loadingTaxData: boolean;
-  onBack: () => void;
-}
-
-interface ConfirmVendorsProps {
-  formData: Vendor;
-  originalData: Vendor;
-  isEditing: boolean;
-  onConfirm: () => void;
-  onBack: () => void;
-}
 
 const STEPS = [
   { id: 'personal', title: 'Personal & Company Info' },
@@ -139,6 +99,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
   const [vendorCategories, setVendorCategories] = React.useState<string[]>([]);
   const [loadingCategories, setLoadingCategories] = React.useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = React.useState<Vendor>({
     id: vendor?.id || 0,
     vendorId: vendor?.vendorId || '',
@@ -188,6 +149,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
     paymentTerms: vendor?.paymentTerms || '',
     businessType: vendor?.businessType || 'regular',
     tdsApplicable: vendor?.tdsApplicable || false,
+    taxId: vendor?.taxId || '',
   });
 
   React.useEffect(() => {
@@ -229,49 +191,32 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
     }
   };
 
-  const handleSameAsBillingChange = (checked: boolean) => {
-    if (checked) {
-      setFormData(prev => ({
-        ...prev,
-        sameAsBilling: true,
-        shippingAddress: { ...prev.billingAddress }
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        sameAsBilling: false,
-        shippingAddress: {
-          doorNo: '',
-          city: '',
-          state: '',
-          district: '',
-          country: '',
-          pincode: ''
-        }
-      }));
-    }
-  };
-
+ 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
     }
     
+    setIsSubmitting(true);
+    
     // Basic validation
     if (!formData.firstName || !formData.lastName || !formData.companyName || 
         !formData.displayName || !formData.email || !formData.category) {
       toast.error('Please fill in all required fields');
+      setIsSubmitting(false);
       return;
     }
 
     // Add validation for new fields
     if (!formData.gstin) {
       toast.error('GSTIN is required');
+      setIsSubmitting(false);
       return;
     }
 
     if (formData.bankDetails.accountNumber !== formData.bankDetails.confirmAccountNumber) {
       toast.error('Account numbers do not match');
+      setIsSubmitting(false);
       return;
     }
 
@@ -313,6 +258,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
         paymentTerms: formData.paymentTerms,
         businessType: formData.businessType,
         tdsApplicable: formData.tdsApplicable,
+        taxId: formData.taxId,
       };
 
       if (vendor) {
@@ -334,6 +280,8 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
       onClose();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to save vendor');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -356,6 +304,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
               vendorCategories={vendorCategories}
               loadingCategories={loadingCategories}
               onBack={handleBack}
+           
             />
             <div className="flex justify-between space-x-4 pt-4">
               <Button type="button" variant="outline" onClick={handleBack}>
@@ -452,11 +401,18 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
               onBack={handleBack}
             />
             <div className="flex justify-between space-x-4 pt-4">
-              <Button type="button" variant="outline" onClick={handleBack}>
+              <Button type="button" variant="outline" onClick={handleBack} disabled={isSubmitting}>
                 Back
               </Button>
-              <Button type="button" onClick={() => handleSubmit()}>
-                {isEditing ? 'Update' : 'Create'}
+              <Button type="button" onClick={() => handleSubmit()} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <span className="mr-2">Loading...</span>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </>
+                ) : (
+                  isEditing ? 'Update' : 'Create'
+                )}
               </Button>
             </div>
           </div>
@@ -466,6 +422,8 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
     }
   };
 
+
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[1200px] max-h-[100vh] overflow-y-auto p-6">
@@ -473,10 +431,12 @@ const VendorForm: React.FC<VendorFormProps> = ({ vendor, isOpen, onClose, onSubm
           <DialogTitle>{isEditing ? 'Edit Vendor' : 'Add New Vendor'}</DialogTitle>
         </DialogHeader>
 
+        
+
         <div className="mb-6">
           <div className="flex items-center justify-between">
             {STEPS.map((step, index) => (
-              <div
+              <div 
                 key={step.id}
                 className={`flex items-center ${
                   index <= currentStep ? 'text-primary' : 'text-muted-foreground'

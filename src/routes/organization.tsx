@@ -268,6 +268,48 @@ export const organizationRoutes = [
         icon: "settings",
       },
       {
+        path: "settings/general",
+        element: <Settings />,
+        title: "General Settings",
+        icon: "building",
+      },
+      {
+        path: "settings/invoice",
+        element: <Settings />,
+        title: "Invoice Settings",
+        icon: "file-text",
+      },
+      {
+        path: "settings/email",
+        element: <Settings />,
+        title: "Email Settings",
+        icon: "message-square",
+      },
+      {
+        path: "settings/tax",
+        element: <Settings />,
+        title: "Tax Settings",
+        icon: "calculator",
+      },
+      {
+        path: "settings/inventory",
+        element: <Settings />,
+        title: "Inventory Settings",
+        icon: "package",
+      },
+      {
+        path: "settings/sales",
+        element: <Settings />,
+        title: "Sales Settings",
+        icon: "receipt",
+      },
+      {
+        path: "settings/purchases",
+        element: <Settings />,
+        title: "Purchase Settings",
+        icon: "shopping-cart",
+      },
+      {
         path: "accounting",
         element: <Accounting />,
         title: "Accounting",
