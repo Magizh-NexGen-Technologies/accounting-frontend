@@ -14,6 +14,7 @@ interface PersonalAndCompanyInfoFormData {
   mobile: string;
   gstin: string;
   openingBalance: number;
+  taxId?: string | number;
 }
 
 interface PersonalAndCompanyInfoProps {
@@ -22,6 +23,7 @@ interface PersonalAndCompanyInfoProps {
   vendorCategories: string[];
   loadingCategories: boolean;
   onBack: () => void;
+ 
 }
 
 const PersonalAndCompanyInfo: React.FC<PersonalAndCompanyInfoProps> = ({
@@ -29,7 +31,8 @@ const PersonalAndCompanyInfo: React.FC<PersonalAndCompanyInfoProps> = ({
   onInputChange,
   vendorCategories,
   loadingCategories,
-  onBack
+  onBack,
+  
 }) => {
   return (
     <div className="space-y-4">
@@ -126,6 +129,7 @@ const PersonalAndCompanyInfo: React.FC<PersonalAndCompanyInfoProps> = ({
             placeholder="Enter GSTIN number"
           />
         </div>
+        
         <div>
           <Label>Opening Balance</Label>
           <Input

@@ -1,9 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Settings as SettingsIcon, Building, ShoppingCart, Users, FileText, Receipt, Package, MessageSquare, Calculator, CreditCard } from 'lucide-react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import GeneralSettings from '@/components/settings/GeneralSettings';
 // import UserSettings from '@/components/settings/UserSettings';
 import InvoiceSettings from '@/components/settings/InvoiceSettings';
@@ -13,10 +13,42 @@ import TaxSettings from '@/components/settings/TaxSettings';
 import InventorySettings from '@/components/settings/InventorySettings';
 import SalesSettings from '@/components/settings/SalesSettings';
 import PurchaseSettings from '@/components/settings/PurchaseSettings';
-// import WhatsAppSettings from '@/components/settings/WhatsAppSettings';
+// import WhatsAppSettings from '@/components/settings/WhatsAppSettings'; 
 
-const SettingsPage = () => {
+interface SettingsProps {
+  organizationId?: string;
+}
+
+const Settings: React.FC<SettingsProps> = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { organizationId } = useParams();
   const [activeTab, setActiveTab] = useState('general');
+  
+  // Extract the tab from the URL path
+  useEffect(() => {
+    const pathParts = location.pathname.split('/');
+    const tabFromUrl = pathParts[pathParts.length - 1];
+    if (tabFromUrl && tabFromUrl !== 'settings') {
+      setActiveTab(tabFromUrl);
+    } else {
+      // If no tab is specified, redirect to general settings
+      navigate(`/${organizationId}/settings/general`, { replace: true });
+    }
+  }, [location.pathname, organizationId, navigate]);
+
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    navigate(`/${organizationId}/settings/${value}`);
+  };
+
+  // If no organizationId is present, redirect to home
+  useEffect(() => {
+    if (!organizationId) {
+      navigate('/');
+    }
+  }, [organizationId, navigate]);
   
   return (
     <div className="space-y-6">
@@ -33,7 +65,7 @@ const SettingsPage = () => {
       </div>
       <Separator />
       
-      <Tabs defaultValue="general" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-1">
           <TabsTrigger value="general" className="flex items-center gap-1">
             <Building className="h-4 w-4" />
@@ -221,4 +253,4 @@ const SettingsPage = () => {
   );
 };
 
-export default SettingsPage;
+export default Settings;

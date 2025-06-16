@@ -7,7 +7,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import {
-  LayoutDashboard,
+  LayoutDashboard, 
   ShoppingCart,
   BookOpen,
   Package,
@@ -33,6 +33,8 @@ import {
   FileX,
   BarChart3,
   Landmark,
+  Building,
+  Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -57,7 +59,7 @@ const navigationItems = [
   { name: "Accounting", path: "/accounting", icon: BookOpen, hasSubmenu: true },
   { name: "Reports", path: "/reports", icon: ChartBar },
   { name: "User Management", path: "/users", icon: User },
-  { name: "Settings", path: "/settings", icon: Settings },
+  { name: "Settings", path: "/settings", icon: Settings, hasSubmenu: true },
 ];
 
 // Purchases submenu items
@@ -78,12 +80,22 @@ const accountingSubmenu = [
   { name: "Bank", path: "/accounting/bank", icon: Landmark },
 ];
 
+const settingsSubmenu = [
+  { name: "General", path: "/settings/general", icon: Building },
+  { name: "Invoice", path: "/settings/invoice", icon: FileText },
+  { name: "Email", path: "/settings/email", icon: MessageSquare },
+  { name: "Tax", path: "/settings/tax", icon: Calculator },
+  { name: "Inventory", path: "/settings/inventory", icon: Package },
+  { name: "Sales", path: "/settings/sales", icon: Receipt },
+  { name: "Purchases", path: "/settings/purchases", icon: ShoppingCart },
+];
+
 const AppLayout: React.FC<{ organization?: { name?: string } }> = ({ organization }) => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
-  const [expandedMenu, setExpandedMenu] = useState<null | 'purchases' | 'accounting'>(null);
+  const [expandedMenu, setExpandedMenu] = useState<null | 'purchases' | 'accounting' | 'settings'>(null);
   const { organizationId } = useParams();
   const basePath = organizationId ? `/${organizationId}` : "";
   const navigate = useNavigate();
@@ -261,13 +273,15 @@ const AppLayout: React.FC<{ organization?: { name?: string } }> = ({ organizatio
                           </ul>
                         )}
                       </>
-                    ) : (
+                    ) : item.name === "Settings" ? (
                       <>
                         <button
                           onClick={() => {
-                            if (expandedMenu !== 'purchases') {
-                              navigate(`${basePath}/purchases/vendors`);
-                              setExpandedMenu('purchases');
+                            if (expandedMenu !== 'settings') {
+                              navigate(`${basePath}/settings/general`);
+                              setExpandedMenu('settings');
+                            } else {
+                              setExpandedMenu(null);
                             }
                           }}
                           className={cn(
@@ -285,15 +299,15 @@ const AppLayout: React.FC<{ organization?: { name?: string } }> = ({ organizatio
                               <ChevronDown
                                 className={cn(
                                   "h-4 w-4 transition-transform duration-200 ml-2",
-                                  expandedMenu === 'purchases' ? "transform rotate-180" : ""
+                                  expandedMenu === 'settings' ? "transform rotate-180" : ""
                                 )}
                               />
                             </>
                           )}
                         </button>
-                        {!sidebarMinimized && expandedMenu === 'purchases' && (
+                        {!sidebarMinimized && expandedMenu === 'settings' && (
                           <ul className="mt-1 space-y-1 pl-4">
-                            {purchasesSubmenu.map((subItem) => (
+                            {settingsSubmenu.map((subItem) => (
                               <li key={subItem.path}>
                                 <Link
                                   to={`${basePath}${subItem.path}`}
@@ -312,7 +326,7 @@ const AppLayout: React.FC<{ organization?: { name?: string } }> = ({ organizatio
                           </ul>
                         )}
                       </>
-                    )}
+                    ) : null}
                   </>
                 ) : (
                   <Link
