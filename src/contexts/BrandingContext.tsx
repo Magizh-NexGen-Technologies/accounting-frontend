@@ -9,11 +9,23 @@ interface BrandingContextType {
   updateBranding: (favicon: string, logo: string) => void;
 }
 
-interface BrandingProviderProps {
-  children: React.ReactNode;
+interface BrandingProviderProps { 
+  children: React.ReactNode; 
 }
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);
+
+const getFileUrl = (path: string) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  // All files are now in branding-image folder
+  if (path.startsWith('/branding-image/')) {
+    return `${API_URL}${path}`;
+  }
+  return `${API_URL}/branding-image/${path}`;
+};
 
 export const BrandingProvider: React.FC<BrandingProviderProps> = ({ children }) => {
   const [faviconUrl, setFaviconUrl] = useState('');
@@ -21,13 +33,14 @@ export const BrandingProvider: React.FC<BrandingProviderProps> = ({ children }) 
 
   // Function to update the favicon in the document head
   const updateFavicon = (url: string) => {
-    let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.head.appendChild(link);
-    }
-    link.href = url || '/favicon.ico'; // Fallback to default favicon
+    const existingLinks = document.querySelectorAll("link[rel*='icon']");
+    existingLinks.forEach(link => link.remove());
+
+    const link = document.createElement('link');
+    link.rel = 'icon';
+    link.type = 'image/x-icon';
+    link.href = getFileUrl(url) || '/favicon.ico';
+    document.head.appendChild(link);
   };
 
   // Function to update branding

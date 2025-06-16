@@ -420,7 +420,7 @@ const TaxRates = () => {
                 </>
               )}
             </Button>
-          </DialogFooter>
+          </DialogFooter> 
         </DialogContent>
       </Dialog>
 
