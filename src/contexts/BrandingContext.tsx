@@ -22,12 +22,15 @@ const getFileUrl = (path: string) => {
 };
 
 const updateFavicon = (url: string) => {
+  // Remove all existing favicon links
   const existingLinks = document.querySelectorAll("link[rel*='icon']");
-  existingLinks.forEach(link => link.remove());
+  existingLinks.forEach(link => link.parentNode?.removeChild(link));
 
+  // Add new favicon link
   const link = document.createElement('link');
   link.rel = 'icon';
-  link.type = 'image/x-icon';
+  // Use correct type for your favicon (png, svg, ico)
+  link.type = url.endsWith('.svg') ? 'image/svg+xml' : url.endsWith('.png') ? 'image/png' : 'image/x-icon';
   link.href = getFileUrl(url);
   document.head.appendChild(link);
 };
